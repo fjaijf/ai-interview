@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>AI 面试官</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --primary: #5c6ac4;
+      --secondary: #f5f7ff;
+      --success: #34d399;
+      --danger: #ef4444;
+      --text: #1f2937;
+      --background: #f3f4f6;
+      --white: #ffffff;
+      --radius: 12px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', 'PingFang SC', sans-serif;
+      background-color: var(--background);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      margin-bottom: 1.5rem;
+      color: var(--primary);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background-color: var(--white);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+    }
+
+    .button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+
+    .start {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .start:hover {
+      background-color: #4b5abf;
+    }
+
+    .stop {
+      background-color: var(--danger);
+      color: white;
+    }
+
+    .stop:hover {
+      background-color: #dc2626;
+    }
+
+    .status-box {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .status {
+      flex: 1;
+      background-color: var(--secondary);
+      padding: 1rem;
+      border-radius: var(--radius);
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .upload-box {
+      background-color: var(--secondary);
+      padding: 1.5rem;
+      border-radius: var(--radius);
+      text-align: center;
+      border: 2px dashed var(--primary);
+    }
+
+    .upload-box input[type="file"] {
+      margin-top: 1rem;
+      padding: 0.5rem;
+      border-radius: var(--radius);
+      border: 1px solid #ccc;
+    }
+
+    .upload-box button {
+      margin-top: 1rem;
+      background-color: var(--primary);
+      color: white;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: var(--radius);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .upload-box button:hover {
+      background-color: #4b5abf;
+    }
+
+    .chat-box {
+      background-color: #f9fafb;
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      max-height: 240px;
+      overflow-y: auto;
+      line-height: 1.6;
+      font-size: 1rem;
+    }
+
+    #circle {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 8px solid var(--success);
+      animation: pulse 1.5s infinite;
+      display: none;
+      margin: 0 auto;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.5; }
+    }
+
+    @media (max-width: 600px) {
+      .status-box {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>🎤 AI 面试官</h1>
+  <div class="container">
+    <div id="circle"></div>
+
+    <div class="button-group">
+      <button class="button start" onclick="startRecording()">开始录音</button>
+      <button class="button stop" onclick="stopRecording()">停止录音</button>
+      <button class="button start" onclick="startVideo()">开始视频</button>
+      <button class="button stop" onclick="stopVideo()">停止视频</button>
+    </div>
+
+    <div class="status-box">
+      <div class="status" id="audioStatus">音频状态：{{ rlt }}</div>
+      <div class="status" id="videoStatus">视频状态：{{ status }}</div>
+    </div>
+
+    <div class="upload-box">
+      <h3>📄 上传简历（PDF 文件）</h3>
+      <input type="file" id="pdfInput" accept=".pdf" required />
+      <br />
+      <button onclick="uploadPDF()">上传 PDF</button>
+      <p id="pdfMessage">{% if pdf_message %}{{ pdf_message }}{% endif %}</p>
+    </div>
+
+    <div class="chat-box">
+      <p><strong>AI 面试官:</strong> 欢迎参加面试，请开始作答。</p>
+    </div>
+  </div>
+
+  <!-- 保留原 JS 脚本逻辑 -->
+  <script>
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    function showCircle() {
+      document.getElementById('circle').style.display = 'block';
+    }
+
+    function hideCircle() {
+      document.getElementById('circle').style.display = 'none';
+    }
+
+    function startRecording() {
+      fetch('/audio/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ action: 'start' })
+      })
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('audioStatus').textContent = '音频状态：' + data.rlt;
+          showCircle();
+        });
+    }
+
+    function stopRecording() {
+      fetch('/audio/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ action: 'stop' })
+      })
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('audioStatus').textContent = '音频状态：' + data.rlt;
+          hideCircle();
+        });
+    }
+
+    function startVideo() {
+      fetch('/video/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ action: 'start' })
+      })
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('videoStatus').textContent = '视频状态：' + data.status;
+        });
+    }
+
+    function stopVideo() {
+      fetch('/video/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ action: 'stop' })
+      })
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('videoStatus').textContent = '视频状态：' + data.status;
+        });
+    }
+
+    function uploadPDF() {
+      const fileInput = document.getElementById('pdfInput');
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append('pdf_file', file);
+
+      fetch('/upload/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+      })
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('pdfMessage').textContent = data.message;
+        });
+    }
+  </script>
+</body>
+</html>
